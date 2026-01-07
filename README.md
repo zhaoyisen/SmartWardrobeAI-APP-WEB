@@ -1,20 +1,43 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 智能衣橱 AI
 
-# Run and deploy your AI Studio app
+一个基于 AI 的智能穿搭管理应用，支持虚拟试穿、智能搭配推荐等功能。
 
-This contains everything you need to run your app locally.
+## 本地运行
 
-View your app in AI Studio: https://ai.studio/apps/drive/1CCjB6kOoPCTx1aMpJAKrrV9aChoEVRrO
+**前置要求：** Node.js 16+
 
-## Run Locally
+1. 安装依赖：
+   ```bash
+   npm install
+   ```
 
-**Prerequisites:**  Node.js
+2. 配置后端 API 地址（创建 `.env.local` 文件）：
+   ```env
+   VITE_API_BASE_URL=http://localhost:3001/api
+   ```
+   详细 API 配置请参考 [API_CONFIG.md](API_CONFIG.md)
 
+3. 启动开发服务器：
+   ```bash
+   npm run dev
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+4. 构建生产版本：
+   ```bash
+   npm run build
+   ```
+
+## 功能特性
+
+- 📱 **智能衣橱管理** - 自动分类和标签衣物
+- 👗 **虚拟试穿** - 3D 虚拟试穿效果预览
+- 💬 **AI 搭配师** - 智能穿搭建议和推荐
+- 🌍 **多语言支持** - 中文、英文、日文
+- 💾 **数据持久化** - 本地存储用户数据
+
+## 技术栈
+
+- React 19 + TypeScript
+- Vite 6
+- Tailwind CSS
+- React Three Fiber (3D 渲染)

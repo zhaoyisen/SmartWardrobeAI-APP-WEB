@@ -5,103 +5,179 @@ import { StylistChat } from './components/StylistChat';
 import { ClothingItem, UserProfile, Language, ModelTier, ClothingCategory } from './types';
 import { Shirt, User, MessageSquareHeart, Globe, Upload, Lock, Sparkles, Zap, Star, Loader2 } from 'lucide-react';
 import { getTranslation } from './utils/translations';
-import { analyzeClothingImage, validateProModelAccess } from './services/geminiService';
+import { analyzeClothingImage, validateProModelAccess } from './services/apiService';
+import { StorageService } from './utils/storage';
+import { ToastProvider, useToastContext } from './contexts/ToastContext';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   // 状态管理
-  const [hasApiKey, setHasApiKey] = useState(false); // API Key 状态
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null); // null = 检查中，true/false = 已确定
   const [activeTab, setActiveTab] = useState<'wardrobe' | 'tryon' | 'chat'>('wardrobe'); // 当前标签页
-  const [lang, setLang] = useState<Language>('zh'); // 当前语言 (默认中文)
-  const [modelTier, setModelTier] = useState<ModelTier>('free'); // 模型等级 (Free/Paid)
+  const [lang, setLang] = useState<Language>(() => StorageService.loadLanguage() || 'zh'); // 当前语言 (默认中文)
+  const [modelTier, setModelTier] = useState<ModelTier>(() => StorageService.loadModelTier() || 'free'); // 模型等级 (Free/Paid)
   const [isVerifyingKey, setIsVerifyingKey] = useState(false); // 是否正在验证 Key
   
-  // 核心数据状态：衣橱列表
-  const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
+  // 核心数据状态：衣橱列表（从本地存储初始化）
+  const [wardrobe, setWardrobe] = useState<ClothingItem[]>(() => {
+    if (StorageService.isAvailable()) {
+      return StorageService.loadWardrobe();
+    }
+    return [];
+  });
   
   // 全局上传进度状态
   const [uploadStatus, setUploadStatus] = useState({ isUploading: false, current: 0, total: 0 });
   
-  // 用户个人资料状态
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    height: 170,
-    weight: 65,
-    gender: 'female', 
-    stylePreference: 'Casual Chic'
+  // 用户个人资料状态（从本地存储初始化）
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = StorageService.loadUserProfile();
+    return saved || {
+      height: 170,
+      weight: 65,
+      gender: 'female', 
+      stylePreference: 'Casual Chic'
+    };
   });
 
   const [showProfileModal, setShowProfileModal] = useState(false); // 控制个人资料弹窗
   const [showLangMenu, setShowLangMenu] = useState(false); // 控制语言菜单
   const photoInputRef = useRef<HTMLInputElement>(null); // 隐藏的文件 Input 引用
 
+  // Toast 通知管理
+  const { showError, showSuccess } = useToastContext();
+
   const t = getTranslation(lang);
 
-  // 初始化检查 API Key
+  // 后台检查后端连接（不阻塞应用启动）
   useEffect(() => {
-    const checkApiKey = async () => {
+    const checkBackendConnection = async () => {
       try {
-        if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          setHasApiKey(hasKey);
-        } else {
-            // 在开发环境中回退到 true
-            setHasApiKey(true);
-        }
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        
+        const response = await fetch(`${API_BASE_URL}/health`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        setBackendAvailable(response.ok);
       } catch (e) {
-        console.error("Error checking API key", e);
+        console.warn("Backend connection check failed, continuing in offline mode", e);
+        setBackendAvailable(false);
       }
     };
-    checkApiKey();
+    checkBackendConnection();
   }, []);
 
-  // 处理 API Key 选择
-  const handleSelectKey = async () => {
-    if (window.aistudio && window.aistudio.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setHasApiKey(true);
+  // 保存衣橱数据到本地存储（当衣橱变化时）
+  useEffect(() => {
+    if (StorageService.isAvailable()) {
+      StorageService.saveWardrobe(wardrobe);
+    }
+  }, [wardrobe]);
+
+  // 保存用户资料到本地存储（当资料变化时）
+  useEffect(() => {
+    if (StorageService.isAvailable()) {
+      StorageService.saveUserProfile(userProfile);
+    }
+  }, [userProfile]);
+
+  // 保存语言设置到本地存储
+  useEffect(() => {
+    if (StorageService.isAvailable()) {
+      StorageService.saveLanguage(lang);
+    }
+  }, [lang]);
+
+  // 保存模型等级设置到本地存储
+  useEffect(() => {
+    if (StorageService.isAvailable()) {
+      StorageService.saveModelTier(modelTier);
+    }
+  }, [modelTier]);
+
+  // 手动重新检查后端连接
+  const handleCheckBackend = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        setBackendAvailable(true);
+        showSuccess(lang === 'zh' ? '后端连接成功！' : 'Backend connected successfully!');
+      } else {
+        setBackendAvailable(false);
+        showError(lang === 'zh' ? '无法连接到后端服务' : 'Cannot connect to backend service');
+      }
+    } catch (e) {
+      setBackendAvailable(false);
+      showError(lang === 'zh' ? '后端服务未运行，请检查配置' : 'Backend service not running, please check configuration');
     }
   };
 
   // 处理切换到 Pro 模式的逻辑
-  // 必须验证 Key 有效性
+  // 验证后端是否支持专业版功能
   const handleSwitchToPro = async () => {
       setIsVerifyingKey(true);
       try {
-          // 1. 如果有选择 Key 的能力，先强制让用户确认/选择 Key
-          if (window.aistudio && window.aistudio.openSelectKey) {
-              await window.aistudio.openSelectKey();
-          }
-
-          // 2. 使用当前 Key 发起验证请求
+          // 调用后端验证专业版功能
           const isValid = await validateProModelAccess();
 
           if (isValid) {
               setModelTier('paid');
-              setHasApiKey(true);
-              alert(t.profile.verificationSuccess);
+              setBackendAvailable(true);
+              showSuccess(t.profile.verificationSuccess);
           } else {
               setModelTier('free');
-              alert(t.profile.verificationFailed);
+              showError(t.profile.verificationFailed);
           }
       } catch (e) {
           console.error(e);
           setModelTier('free');
-          alert(t.profile.verificationFailed);
+          showError(t.profile.verificationFailed);
       } finally {
           setIsVerifyingKey(false);
       }
   };
 
   const addClothingItem = (item: ClothingItem) => {
-    setWardrobe(prev => [item, ...prev]);
+    setWardrobe(prev => {
+      const updated = [item, ...prev];
+      // 自动保存到本地存储
+      if (StorageService.isAvailable()) {
+        StorageService.saveWardrobe(updated);
+      }
+      return updated;
+    });
   };
 
   const removeClothingItem = (id: string) => {
-    setWardrobe(prev => prev.filter(item => item.id !== id));
+    setWardrobe(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      // 自动保存到本地存储
+      if (StorageService.isAvailable()) {
+        StorageService.saveWardrobe(updated);
+      }
+      return updated;
+    });
   };
 
   const switchLanguage = (l: Language) => {
       setLang(l);
       setShowLangMenu(false);
+      // 自动保存语言设置
+      if (StorageService.isAvailable()) {
+        StorageService.saveLanguage(l);
+      }
   };
 
   // 处理用户头像上传
@@ -111,7 +187,16 @@ const App: React.FC = () => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-          setUserProfile(prev => ({ ...prev, userPhoto: reader.result as string }));
+          const updatedProfile = { ...userProfile, userPhoto: reader.result as string };
+          setUserProfile(updatedProfile);
+          // 自动保存用户资料
+          if (StorageService.isAvailable()) {
+            StorageService.saveUserProfile(updatedProfile);
+          }
+      };
+      reader.onerror = () => {
+          console.error('Failed to read photo file');
+          showError(lang === 'zh' ? '照片读取失败，请重试' : 'Failed to read photo, please try again');
       };
       reader.readAsDataURL(file);
   };
@@ -130,6 +215,36 @@ const App: React.FC = () => {
   // 负责文件的读取、AI 分析和状态更新
   const handleBatchUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+
+    // 如果后端不可用，允许手动添加（降级处理）
+    if (backendAvailable === false) {
+      const t = getTranslation(lang);
+      showError(t.wardrobe.backendUnavailable, 5000);
+      
+      // 提供降级方案：允许用户手动添加衣物
+      const fileArray = Array.from(files);
+      for (let i = 0; i < fileArray.length; i++) {
+        try {
+          const file = fileArray[i];
+          const base64 = await readFileAsBase64(file);
+          
+          // 创建默认的衣物项（无 AI 分析）
+          const newItem: ClothingItem = {
+            id: Date.now().toString() + Math.random().toString(),
+            imageUrl: base64,
+            category: ClothingCategory.TOP,
+            color: 'Unknown',
+            description: file.name.replace(/\.[^/.]+$/, '') || 'New Item',
+            tags: []
+          };
+
+          addClothingItem(newItem);
+        } catch (error) {
+          console.error(`Error processing file ${i + 1}`, error);
+        }
+      }
+      return;
+    }
 
     setUploadStatus({ isUploading: true, current: 0, total: files.length });
     
@@ -164,6 +279,11 @@ const App: React.FC = () => {
                 addClothingItem(newItem);
             } catch (error) {
                 console.error(`Error uploading file ${i + 1}`, error);
+                // 显示用户友好的错误提示
+                const errorMsg = lang === 'zh' 
+                  ? `第 ${i + 1} 张图片分析失败，请检查图片格式或网络连接`
+                  : `Failed to analyze image ${i + 1}, please check image format or network`;
+                showError(errorMsg, 4000);
                 // 即使单个失败也继续循环
             }
         }
@@ -175,41 +295,8 @@ const App: React.FC = () => {
     }
   };
 
-  // 如果没有 API Key，显示锁定界面
-  if (!hasApiKey) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full flex flex-col items-center">
-          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mb-6">
-            <Lock className="text-white" size={32} />
-          </div>
-          <h1 className="text-2xl font-bold mb-2 text-gray-900">Access Required</h1>
-          <p className="text-gray-500 mb-8">
-            To use the advanced AI features like Virtual Try-On and real-time Stylist Chat, please select your Google Cloud API key.
-          </p>
-          <button 
-            onClick={handleSelectKey}
-            className="w-full bg-black text-white py-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
-          >
-            <Sparkles size={18} />
-            Select API Key
-          </button>
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/billing" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="mt-4 text-xs text-blue-600 hover:underline"
-          >
-            Learn about Gemini API billing
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden text-gray-900">
-      
       {/* 主内容区域 */}
       <main className="flex-1 overflow-hidden relative">
         {activeTab === 'wardrobe' && (
@@ -220,6 +307,7 @@ const App: React.FC = () => {
             modelTier={modelTier}
             onUpload={handleBatchUpload}
             uploadStatus={uploadStatus}
+            backendAvailable={backendAvailable}
           />
         )}
         {activeTab === 'tryon' && (
@@ -228,6 +316,7 @@ const App: React.FC = () => {
             wardrobe={wardrobe} 
             lang={lang}
             modelTier={modelTier}
+            backendAvailable={backendAvailable}
           />
         )}
         {activeTab === 'chat' && (
@@ -235,6 +324,7 @@ const App: React.FC = () => {
             wardrobe={wardrobe}
             lang={lang}
             modelTier={modelTier}
+            backendAvailable={backendAvailable}
           />
         )}
 
@@ -357,6 +447,26 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* 后端状态指示器 (左上角) */}
+      {backendAvailable !== null && (
+        <div className="absolute top-4 left-4 z-50">
+          <div className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 backdrop-blur-sm ${
+            backendAvailable 
+              ? 'bg-green-100/80 text-green-700 border border-green-200' 
+              : 'bg-red-100/80 text-red-700 border border-red-200'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              backendAvailable ? 'bg-green-500' : 'bg-red-500'
+            }`} />
+            <span>
+              {backendAvailable 
+                ? t.backend.statusAvailable 
+                : t.backend.statusUnavailable}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 语言切换菜单 (右上角) */}
       <div className="absolute top-4 right-4 z-50">
         <button 
@@ -427,6 +537,15 @@ const App: React.FC = () => {
         </button>
       </nav>
     </div>
+  );
+};
+
+// 包装 App 组件以提供 Toast Context
+const App: React.FC = () => {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 };
 

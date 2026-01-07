@@ -11,6 +11,7 @@ interface WardrobeProps {
   // 全局上传处理 Props
   onUpload: (files: FileList | null) => void; 
   uploadStatus: { isUploading: boolean; current: number; total: number };
+  backendAvailable?: boolean | null; // 后端可用性状态
 }
 
 /**
@@ -23,7 +24,8 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
   lang, 
   modelTier, 
   onUpload, 
-  uploadStatus 
+  uploadStatus,
+  backendAvailable
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<string>('All'); // 当前筛选类别
@@ -63,6 +65,13 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
           ))}
         </div>
       </div>
+
+      {/* 后端状态提示 */}
+      {backendAvailable === false && (
+        <div className="mx-4 mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+          <p>{t.wardrobe.backendUnavailable}</p>
+        </div>
+      )}
 
       {/* 衣物网格展示区 */}
       <div className="flex-1 overflow-y-auto p-4 pb-24">

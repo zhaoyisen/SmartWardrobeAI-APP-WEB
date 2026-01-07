@@ -1,6 +1,6 @@
 {
-  "name": "SmartWardrobe AI",
-  "description": "Your AI-powered personal stylist. Manage your wardrobe, try on clothes virtually with 3D avatars, and get weather-aware outfit recommendations using Gemini.",
+  "name": "智能衣橱 AI",
+  "description": "您的 AI 智能穿搭助手。管理您的衣橱，使用 3D 虚拟试穿，获取基于天气的穿搭推荐。",
   "requestFramePermissions": [
     "camera",
     "microphone",

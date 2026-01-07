@@ -10,7 +10,9 @@ export const translations = {
       empty: "暂无衣物，快来添加吧！",
       filterAll: "全部",
       uploading: "正在批量分析中 ({current}/{total})...",
-      noItemsFound: "未找到衣物"
+      noItemsFound: "未找到衣物",
+      backendRequired: "AI 分析功能需要后端服务支持",
+      backendUnavailable: "后端服务不可用，无法进行 AI 分析"
     },
     category: {
       Top: "上装",
@@ -39,7 +41,9 @@ export const translations = {
       moveInner: "移至里层",
       moveOuter: "移至外层",
       download: "保存图片",
-      close: "关闭"
+      close: "关闭",
+      backendRequired: "AI 试穿功能需要后端服务支持",
+      backendUnavailable: "后端服务不可用，无法生成试穿效果"
     },
     chat: {
       title: "AI 搭配师",
@@ -51,7 +55,9 @@ export const translations = {
       dateNight: "约会穿搭建议",
       locationPlaceholder: "输入城市",
       weatherRec: "基于天气的推荐",
-      failedWeather: "暂时无法获取天气信息，但我建议根据气温适当增减衣物。"
+      failedWeather: "暂时无法获取天气信息，但我建议根据气温适当增减衣物。",
+      backendRequired: "AI 搭配师功能需要后端服务支持",
+      backendUnavailable: "后端服务不可用，无法使用 AI 搭配师功能"
     },
     profile: {
       title: "我的资料",
@@ -71,13 +77,19 @@ export const translations = {
       tierNote: "专业版需要绑定计费项目的 API Key。",
       verifying: "正在验证 API Key...",
       verificationSuccess: "验证成功！已切换到专业版。",
-      verificationFailed: "验证失败：该 API Key 无法访问专业版模型。请检查 Google Cloud 计费设置。",
+      verificationFailed: "验证失败：后端服务不支持专业版功能，请检查后端配置。",
       apiKeyRequired: "需要 API Key"
     },
     nav: {
       wardrobe: "衣橱",
       tryon: "试穿",
       chat: "顾问"
+    },
+    backend: {
+      statusChecking: "检查后端连接...",
+      statusAvailable: "后端服务可用",
+      statusUnavailable: "后端服务不可用",
+      statusUnknown: "后端状态未知"
     }
   },
   // 英文翻译
@@ -88,7 +100,9 @@ export const translations = {
       empty: "No items found. Add some clothes!",
       filterAll: "All",
       uploading: "Analyzing batch ({current}/{total})...",
-      noItemsFound: "No items found"
+      noItemsFound: "No items found",
+      backendRequired: "AI analysis requires backend service",
+      backendUnavailable: "Backend service unavailable, AI analysis disabled"
     },
     category: {
       Top: "Top",
@@ -117,10 +131,12 @@ export const translations = {
       moveInner: "Move Inner",
       moveOuter: "Move Outer",
       download: "Save Image",
-      close: "Close"
+      close: "Close",
+      backendRequired: "AI try-on requires backend service",
+      backendUnavailable: "Backend service unavailable, cannot generate try-on images"
     },
     chat: {
-      title: "Gemini Stylist",
+      title: "AI 搭配师",
       placeholder: "Ask me anything...",
       initial: "Hello! I am your AI stylist. I can help you pick an outfit based on the weather or your specific plans.",
       thinking: "I'm thinking...",
@@ -129,7 +145,9 @@ export const translations = {
       dateNight: "Date Night",
       locationPlaceholder: "Enter City",
       weatherRec: "Recommendation",
-      failedWeather: "I couldn't check the weather right now, but I recommend layering up!"
+      failedWeather: "I couldn't check the weather right now, but I recommend layering up!",
+      backendRequired: "AI stylist requires backend service",
+      backendUnavailable: "Backend service unavailable, AI stylist disabled"
     },
     profile: {
       title: "My Profile",
@@ -149,13 +167,19 @@ export const translations = {
       tierNote: "Pro requires an API Key with a billed project.",
       verifying: "Verifying API Key...",
       verificationSuccess: "Verification Success! Switched to Pro.",
-      verificationFailed: "Verification Failed: Key cannot access Pro models. Check Google Cloud billing.",
+      verificationFailed: "Verification Failed: Backend service does not support Pro features. Please check backend configuration.",
       apiKeyRequired: "API Key Required"
     },
     nav: {
       wardrobe: "Wardrobe",
       tryon: "Try On",
       chat: "Stylist"
+    },
+    backend: {
+      statusChecking: "Checking backend...",
+      statusAvailable: "Backend available",
+      statusUnavailable: "Backend unavailable",
+      statusUnknown: "Backend status unknown"
     }
   },
   // 日文翻译
@@ -166,7 +190,9 @@ export const translations = {
       empty: "アイテムがありません。服を追加しましょう！",
       filterAll: "すべて",
       uploading: "一括分析中 ({current}/{total})...",
-      noItemsFound: "アイテムが見つかりません"
+      noItemsFound: "アイテムが見つかりません",
+      backendRequired: "AI分析にはバックエンドサービスが必要です",
+      backendUnavailable: "バックエンドサービスが利用できません。AI分析は無効です"
     },
     category: {
       Top: "トップス",
@@ -195,7 +221,9 @@ export const translations = {
       moveInner: "内側へ移動",
       moveOuter: "外側へ移動",
       download: "画像を保存",
-      close: "閉じる"
+      close: "閉じる",
+      backendRequired: "AI試着機能にはバックエンドサービスが必要です",
+      backendUnavailable: "バックエンドサービスが利用できません。試着画像を生成できません"
     },
     chat: {
       title: "AIスタイリスト",
@@ -207,7 +235,9 @@ export const translations = {
       dateNight: "デートコーデ",
       locationPlaceholder: "都市を入力",
       weatherRec: "天気予報に基づく提案",
-      failedWeather: "天気の取得に失敗しましたが、重ね着をおすすめします！"
+      failedWeather: "天気の取得に失敗しましたが、重ね着をおすすめします！",
+      backendRequired: "AIスタイリスト機能にはバックエンドサービスが必要です",
+      backendUnavailable: "バックエンドサービスが利用できません。AIスタイリストは無効です"
     },
     profile: {
       title: "マイプロフィール",
@@ -234,6 +264,12 @@ export const translations = {
       wardrobe: "クローゼット",
       tryon: "試着",
       chat: "相談"
+    },
+    backend: {
+      statusChecking: "バックエンド接続を確認中...",
+      statusAvailable: "バックエンドサービス利用可能",
+      statusUnavailable: "バックエンドサービス利用不可",
+      statusUnknown: "バックエンド状態不明"
     }
   }
 };

@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@source "../index.html";
+@source "../**/*.{js,ts,jsx,tsx}";
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* 隐藏滚动条但保留滚动功能，保持 UI 简洁 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 动画定义 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-\[slideUp_0\.3s_ease-out\] {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-\[fadeIn_0\.1s_ease-out\] {
+  animation: fadeIn 0.1s ease-out;
+}
+
+.animate-\[scaleIn_0\.2s_ease-out\] {
+  animation: scaleIn 0.2s ease-out;
+}
+

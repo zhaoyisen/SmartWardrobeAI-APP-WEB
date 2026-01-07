@@ -4,13 +4,15 @@ import { OrbitControls, ContactShadows, Environment, Float } from '@react-three/
 import { UserProfile, ClothingItem, ClothingCategory, Language, ModelTier } from '../types';
 import { Wand2, Info, ArrowLeft, Loader2, User, Layers, ChevronLeft, ChevronRight, ArrowRight, Maximize2, Download, X } from 'lucide-react';
 import { getTranslation } from '../utils/translations';
-import { generateTryOnImage } from '../services/geminiService';
+import { generateTryOnImage } from '../services/apiService';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface TryOnProps {
   userProfile: UserProfile;
   wardrobe: ClothingItem[];
   lang: Language;
   modelTier: ModelTier;
+  backendAvailable?: boolean | null;
 }
 
 // 简单的占位 3D Avatar 模型
@@ -76,13 +78,14 @@ const AvatarModel = ({ height, weight, gender, selectedItems }: {
   );
 };
 
-export const TryOn: React.FC<TryOnProps> = ({ userProfile, wardrobe, lang, modelTier }) => {
+export const TryOn: React.FC<TryOnProps> = ({ userProfile, wardrobe, lang, modelTier, backendAvailable }) => {
   const [selectedItems, setSelectedItems] = useState<ClothingItem[]>([]); // 当前选中的搭配
   const [activeCategory, setActiveCategory] = useState<ClothingCategory>(ClothingCategory.TOP); // 当前浏览的分类
   const [isGenerating, setIsGenerating] = useState(false); // 生成状态
   const [generatedImage, setGeneratedImage] = useState<string | null>(null); // 生成的结果图
   const [isFullscreen, setIsFullscreen] = useState(false); // 全屏预览状态
 
+  const { showError, showSuccess } = useToastContext();
   const t = getTranslation(lang);
 
   // 定义叠穿组
@@ -157,21 +160,37 @@ export const TryOn: React.FC<TryOnProps> = ({ userProfile, wardrobe, lang, model
 
   // 调用 API 生成试穿图
   const handleGenerateLook = async () => {
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0) {
+      showError(lang === 'zh' ? '请先选择衣物' : 'Please select items first');
+      return;
+    }
+    
+    if (backendAvailable === false) {
+      showError(t.tryOn.backendUnavailable);
+      return;
+    }
+    
     setIsGenerating(true);
     setGeneratedImage(null);
 
-    const genderText = userProfile.gender === 'female' ? 'female' : userProfile.gender === 'male' ? 'male' : 'person';
-    const userDesc = `A ${userProfile.height}cm tall, ${userProfile.weight}kg ${genderText} model`;
+    try {
+      const genderText = userProfile.gender === 'female' ? 'female' : userProfile.gender === 'male' ? 'male' : 'person';
+      const userDesc = `A ${userProfile.height}cm tall, ${userProfile.weight}kg ${genderText} model`;
 
-    const imageUrl = await generateTryOnImage(userDesc, selectedItems, userProfile.userPhoto, modelTier);
-    
-    if (imageUrl) {
-        setGeneratedImage(imageUrl);
-    } else {
-        alert(lang === 'zh' ? "生成失败，可能是网络问题或输入数据有误。" : "Generation failed. Please check connection or inputs.");
+      const imageUrl = await generateTryOnImage(userDesc, selectedItems, userProfile.userPhoto, modelTier);
+      
+      if (imageUrl) {
+          setGeneratedImage(imageUrl);
+          showSuccess(lang === 'zh' ? '试穿效果生成成功！' : 'Try-on image generated successfully!');
+      } else {
+          showError(lang === 'zh' ? "生成失败，可能是网络问题或输入数据有误。" : "Generation failed. Please check connection or inputs.");
+      }
+    } catch (error) {
+      console.error('Failed to generate try-on image:', error);
+      showError(lang === 'zh' ? "生成失败，请稍后重试。" : "Generation failed. Please try again later.");
+    } finally {
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   };
 
   // 下载生成的图片
@@ -321,9 +340,14 @@ export const TryOn: React.FC<TryOnProps> = ({ userProfile, wardrobe, lang, model
 
                 {/* 生成按钮 */}
                 <div className="mt-2 flex justify-center pb-1">
+                    {backendAvailable === false && (
+                      <div className="mb-2 text-xs text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
+                        {t.tryOn.backendUnavailable}
+                      </div>
+                    )}
                     <button 
                         onClick={handleGenerateLook}
-                        disabled={isGenerating}
+                        disabled={isGenerating || backendAvailable === false}
                         className="bg-black text-white px-6 py-2.5 rounded-full shadow-lg flex items-center gap-2 font-semibold hover:scale-105 transition-all text-xs md:text-sm disabled:opacity-50"
                     >
                         {isGenerating ? (

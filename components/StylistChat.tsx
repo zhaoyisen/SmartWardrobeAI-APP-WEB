@@ -1,21 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MapPin, Sparkles, Loader2, ThermometerSun } from 'lucide-react';
 import { ChatMessage, ClothingItem, WeatherData, Language, ModelTier } from '../types';
-import { chatWithStylist, getOutfitRecommendation } from '../services/geminiService';
+import { chatWithStylist, getOutfitRecommendation } from '../services/apiService';
 import { getTranslation } from '../utils/translations';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface StylistChatProps {
   wardrobe: ClothingItem[];
   lang: Language;
   modelTier: ModelTier;
+  backendAvailable?: boolean | null;
 }
 
 /**
  * 智能搭配师聊天组件
  * 提供对话式穿搭建议和基于天气的推荐
  */
-export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelTier }) => {
+export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelTier, backendAvailable }) => {
   const t = getTranslation(lang);
+  const { showError } = useToastContext();
   
   // 初始化消息列表
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -57,6 +60,11 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    if (backendAvailable === false) {
+      showError(lang === 'zh' ? t.chat.backendUnavailable : t.chat.backendUnavailable);
+      return;
+    }
+
     // 添加用户消息
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: input };
     setMessages(prev => [...prev, userMsg]);
@@ -64,7 +72,7 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
     setIsTyping(true);
 
     try {
-      // 转换历史消息格式适配 Gemini API
+      // 转换历史消息格式适配后端 API
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -83,8 +91,10 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
       };
       setMessages(prev => [...prev, botMsg]);
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: t.chat.error }]);
+      console.error('Chat error:', error);
+      const errorMsg = error instanceof Error ? error.message : t.chat.error;
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: errorMsg }]);
+      showError(lang === 'zh' ? '发送消息失败，请检查网络连接' : 'Failed to send message, please check your connection');
     } finally {
       setIsTyping(false);
     }
@@ -92,6 +102,11 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
 
   // 获取今日穿搭推荐处理函数
   const handleRecommendOutfit = async () => {
+    if (backendAvailable === false) {
+      showError(lang === 'zh' ? t.chat.backendUnavailable : t.chat.backendUnavailable);
+      return;
+    }
+
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: `${t.chat.outfitToday} (${location})` };
     setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
@@ -118,7 +133,9 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
         setMessages(prev => [...prev, botMsg]);
 
     } catch (e) {
+        console.error('Recommendation error:', e);
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: t.chat.failedWeather }]);
+        showError(lang === 'zh' ? '获取推荐失败，请稍后重试' : 'Failed to get recommendation, please try again later');
     } finally {
         setIsTyping(false);
     }
@@ -126,6 +143,13 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {/* 后端状态提示 */}
+      {backendAvailable === false && (
+        <div className="mx-4 mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+          <p>{t.chat.backendUnavailable}</p>
+        </div>
+      )}
+
       {/* 聊天头部：标题和位置 */}
       <div className="bg-white p-4 shadow-sm flex justify-between items-center z-10">
         <div className="flex items-center gap-2">
@@ -193,14 +217,16 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
       <div className="p-2 bg-gray-50 flex gap-2 overflow-x-auto no-scrollbar">
         <button 
             onClick={handleRecommendOutfit}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-700 whitespace-nowrap hover:bg-gray-100"
+            disabled={backendAvailable === false}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-700 whitespace-nowrap hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
             <ThermometerSun size={14} className="text-orange-500" />
             {t.chat.outfitToday}
         </button>
         <button 
              onClick={() => setInput(t.chat.dateNight)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-700 whitespace-nowrap hover:bg-gray-100"
+            disabled={backendAvailable === false}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-700 whitespace-nowrap hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {t.chat.dateNight}
         </button>
@@ -219,7 +245,7 @@ export const StylistChat: React.FC<StylistChatProps> = ({ wardrobe, lang, modelT
             />
             <button 
                 onClick={handleSend}
-                disabled={!input.trim() || isTyping}
+                disabled={!input.trim() || isTyping || backendAvailable === false}
                 className="w-11 h-11 bg-black text-white rounded-full flex items-center justify-center disabled:opacity-50 hover:scale-105 transition-transform"
             >
                 {isTyping ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}

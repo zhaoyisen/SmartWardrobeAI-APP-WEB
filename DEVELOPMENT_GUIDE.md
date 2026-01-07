@@ -1,7 +1,7 @@
 # SmartWardrobe AI 开发者指南与技术规格
 
 ## 1. 项目概述
-SmartWardrobe AI 是一个利用 Google Gemini 3 系列模型构建的智能时尚管理应用。它旨在通过 AI 解决用户“不知道怎么穿”、“衣服太多记不住”以及“线上试穿”的需求。
+SmartWardrobe AI 是一个基于 AI 的智能时尚管理应用。它旨在通过 AI 解决用户"不知道怎么穿"、"衣服太多记不住"以及"线上试穿"的需求。
 
 ## 2. 前端已实现功能
 
@@ -20,7 +20,7 @@ SmartWardrobe AI 是一个利用 Google Gemini 3 系列模型构建的智能时�
 
 ### 2.3 AI 搭配师 (StylistChat.tsx)
 - **上下文感知**: 聊天时会自动注入用户当前的衣橱清单作为 System Instruction。
-- **实时天气增强**: 使用 Google Search 获取实时天气。
+- **实时天气增强**: 通过后端 API 获取实时天气信息。
 - **可视化建议**: 推荐消息中会附带衣橱中具体衣物的图片。
 
 ## 3. 后端 API 接口规格建议
@@ -36,7 +36,7 @@ SmartWardrobe AI 是一个利用 Google Gemini 3 系列模型构建的智能时�
     "language": "zh"
   }
   ```
-- **Gemini 模型建议**: `gemini-3-flash-preview` (速度快，性价比高)。
+- **AI 模型建议**: 使用速度快、性价比高的 AI 模型。
 - **返回数据结构**: `ClothingItem` 的部分字段。
 
 ### [POST] `/api/ai/recommend`
@@ -49,7 +49,7 @@ SmartWardrobe AI 是一个利用 Google Gemini 3 系列模型构建的智能时�
     "userQuery": "我今天要参加面试"
   }
   ```
-- **核心逻辑**: 必须开启 `googleSearch` 工具以获取天气。
+- **核心逻辑**: 后端需要集成天气 API 服务以获取天气信息。
 - **返回数据结构**:
   ```json
   {
@@ -72,13 +72,13 @@ SmartWardrobe AI 是一个利用 Google Gemini 3 系列模型构建的智能时�
     ]
   }
   ```
-- **Gemini 模型建议**: `gemini-3-pro-image-preview` (支持 1K 分辨率)。
+- **AI 模型建议**: 使用支持高分辨率图像生成的 AI 模型。
 - **提示词工程**: 应包含类似 "Place the inner layer item under the outer layer item, maintain the user's facial features if photo provided" 的指令。
 
 ## 4. 技术栈参考
 - **Frontend**: React 19, Tailwind CSS, Lucide Icons.
 - **3D**: Three.js, @react-three/fiber, @react-three/drei.
-- **AI SDK**: @google/genai (当前前端直接引用，后端可改为 Node.js 版)。
+- **AI SDK**: 后端应使用相应的 AI SDK 进行模型调用。
 
 ## 5. 待办事项 (由你后端实现)
 1. 实现持久化数据库 (推荐 PostgreSQL 或 MongoDB)。

@@ -57,12 +57,9 @@ export type Language = 'zh' | 'en' | 'ja';
 // 模型层级类型 (免费/付费)
 export type ModelTier = 'free' | 'paid';
 
-// 全局声明，扩展 AIStudio 接口以避免类型冲突
+// 全局声明（保留以兼容旧代码，但不再使用）
 declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
+  // 已移除 AIStudio 相关接口，改为直接调用后端 API
 
   // Add type definitions for React Three Fiber elements to satisfy TypeScript (Global Scope)
   namespace JSX {
