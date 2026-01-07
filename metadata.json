@@ -1,0 +1,9 @@
+{
+  "name": "SmartWardrobe AI",
+  "description": "Your AI-powered personal stylist. Manage your wardrobe, try on clothes virtually with 3D avatars, and get weather-aware outfit recommendations using Gemini.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
