@@ -76,10 +76,21 @@ async function authRequest<T>(
 
     const result: Result<T> = await response.json();
     
+    // 检查是否有错误码（即使状态码是200，也可能有业务错误）
+    if (result.code !== undefined && result.code !== 200 && result.code !== 0) {
+      throw new Error(result.message || `请求失败: ${result.code}`);
+    }
+    
     // 处理后端返回的Result格式
-    if (result.data !== undefined) {
+    if (result.data !== undefined && result.data !== null) {
       return result.data;
     }
+    
+    // 如果data是null，说明请求失败
+    if (result.data === null) {
+      throw new Error(result.message || '请求失败，返回数据为空');
+    }
+    
     // 如果没有data字段，直接返回result（兼容直接返回数据的情况）
     return result as unknown as T;
   } catch (error) {
@@ -169,15 +180,18 @@ export const registerByEmail = async (
       body: JSON.stringify(request),
     });
     
-    // 自动保存Token和用户信息
-    if (response.token) {
-      StorageService.saveToken(response.token);
-      StorageService.saveUserInfo({
-        userId: response.userId,
-        username: response.username,
-        email: email,
-      });
+    // 检查响应是否有效
+    if (!response || !response.token) {
+      throw new Error('注册失败：服务器返回的数据无效');
     }
+    
+    // 自动保存Token和用户信息
+    StorageService.saveToken(response.token);
+    StorageService.saveUserInfo({
+      userId: response.userId,
+      username: response.username,
+      email: email,
+    });
     
     return response;
   } catch (error) {

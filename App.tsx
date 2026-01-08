@@ -357,7 +357,11 @@ const AppContent: React.FC = () => {
       {/* 主内容区域 */}
       <main className="flex-1 overflow-hidden relative">
         {activeTab === 'home' && (
-          <Home lang={lang} />
+          <Home 
+            lang={lang} 
+            isAuthenticated={auth.isAuthenticated} 
+            onLoginClick={() => setShowLogin(true)} 
+          />
         )}
         {activeTab === 'wardrobe' && (
           <Wardrobe 
@@ -483,7 +487,7 @@ const AppContent: React.FC = () => {
                                 className="w-full border rounded-lg p-2"
                             />
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">{t.profile.gender}</label>
                             <select 
                                 value={userProfile.gender}
@@ -495,12 +499,26 @@ const AppContent: React.FC = () => {
                                 <option value="unisex">{t.profile.unisex}</option>
                             </select>
                         </div>
-                        <button 
-                            onClick={() => setShowProfileModal(false)}
-                            className="w-full bg-black text-white py-3 rounded-xl font-semibold mt-2"
-                        >
-                            {t.profile.save}
-                        </button>
+                        <div className="space-y-2 pt-2">
+                          <button 
+                              onClick={() => setShowProfileModal(false)}
+                              className="w-full bg-black text-white py-3 rounded-xl font-semibold"
+                          >
+                              {t.profile.save}
+                          </button>
+                          {auth.isAuthenticated && (
+                            <button
+                              onClick={() => {
+                                auth.logout();
+                                setShowProfileModal(false);
+                                setActiveTab('home');
+                              }}
+                              className="w-full border border-gray-300 text-gray-800 py-3 rounded-xl font-semibold"
+                            >
+                              {lang === 'zh' ? '退出登录' : lang === 'en' ? 'Log out' : 'ログアウト'}
+                            </button>
+                          )}
+                        </div>
                     </div>
                 </div>
             </div>

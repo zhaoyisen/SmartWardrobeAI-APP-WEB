@@ -5,13 +5,15 @@ import { Shirt, User, MessageSquareHeart, Sparkles } from 'lucide-react';
 
 interface HomeProps {
   lang: Language;
+  isAuthenticated: boolean;
+  onLoginClick?: () => void;
 }
 
 /**
  * 首页组件
  * 显示欢迎信息和功能入口
  */
-export const Home: React.FC<HomeProps> = ({ lang }) => {
+export const Home: React.FC<HomeProps> = ({ lang, isAuthenticated, onLoginClick }) => {
   const t = getTranslation(lang);
 
   const features = [
@@ -73,12 +75,26 @@ export const Home: React.FC<HomeProps> = ({ lang }) => {
             })}
           </div>
 
-          {/* 提示信息 */}
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-            <p className="text-blue-800">
-              {lang === 'zh' ? '请登录以使用完整功能' : lang === 'en' ? 'Please login to use full features' : '完全な機能を使用するにはログインしてください'}
-            </p>
-          </div>
+          {/* 登录提示 / 已登录状态信息 */}
+          {!isAuthenticated ? (
+            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6 text-center space-y-3">
+              <p className="text-blue-800">
+                {lang === 'zh'
+                  ? '请登录以使用完整功能'
+                  : lang === 'en'
+                  ? 'Please login to use full features'
+                  : '完全な機能を使用するにはログインしてください'}
+              </p>
+              {onLoginClick && (
+                <button
+                  onClick={onLoginClick}
+                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-blue-600 text-white text-sm font-medium shadow-sm hover:bg-blue-700 transition-colors"
+                >
+                  {lang === 'zh' ? '立即登录' : lang === 'en' ? 'Login now' : '今すぐログイン'}
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
