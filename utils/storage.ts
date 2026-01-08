@@ -1,4 +1,4 @@
-import { ClothingItem, UserProfile, Language, ModelTier } from '../types';
+import { ClothingItem, UserProfile, Language, ModelTier, UserInfo } from '../types';
 
 // localStorage 键名常量
 const STORAGE_KEYS = {
@@ -6,6 +6,8 @@ const STORAGE_KEYS = {
   USER_PROFILE: 'smartwardrobe_user_profile',
   LANGUAGE: 'smartwardrobe_language',
   MODEL_TIER: 'smartwardrobe_model_tier',
+  TOKEN: 'smartwardrobe_token',
+  USER_INFO: 'smartwardrobe_user_info',
 } as const;
 
 /**
@@ -162,6 +164,77 @@ export class StorageService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * 保存认证Token
+   */
+  static saveToken(token: string): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    } catch (error) {
+      console.error('Failed to save token:', error);
+    }
+  }
+
+  /**
+   * 加载认证Token
+   */
+  static loadToken(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.TOKEN);
+    } catch (error) {
+      console.error('Failed to load token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 清除认证Token
+   */
+  static clearToken(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    } catch (error) {
+      console.error('Failed to clear token:', error);
+    }
+  }
+
+  /**
+   * 保存用户信息
+   */
+  static saveUserInfo(userInfo: UserInfo): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(userInfo));
+    } catch (error) {
+      console.error('Failed to save user info:', error);
+    }
+  }
+
+  /**
+   * 加载用户信息
+   */
+  static loadUserInfo(): UserInfo | null {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.USER_INFO);
+      if (!data) return null;
+      
+      return JSON.parse(data) as UserInfo;
+    } catch (error) {
+      console.error('Failed to load user info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 清除用户信息
+   */
+  static clearUserInfo(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USER_INFO);
+    } catch (error) {
+      console.error('Failed to clear user info:', error);
     }
   }
 }

@@ -1,21 +1,32 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Home } from './components/Home';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
 import { Wardrobe } from './components/Wardrobe';
 import { TryOn } from './components/TryOn';
 import { StylistChat } from './components/StylistChat';
 import { ClothingItem, UserProfile, Language, ModelTier, ClothingCategory } from './types';
-import { Shirt, User, MessageSquareHeart, Globe, Upload, Lock, Sparkles, Zap, Star, Loader2 } from 'lucide-react';
+import { Home as HomeIcon, Shirt, User, MessageSquareHeart, Globe, Upload, Lock, Sparkles, Zap, Star, Loader2 } from 'lucide-react';
 import { getTranslation } from './utils/translations';
-import { analyzeClothingImage, validateProModelAccess } from './services/apiService';
+import { analyzeClothingImage, validateProModelAccess, setUnauthorizedCallback, UnauthorizedError } from './services/apiService';
 import { StorageService } from './utils/storage';
 import { ToastProvider, useToastContext } from './contexts/ToastContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const AppContent: React.FC = () => {
   // 状态管理
   const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null); // null = 检查中，true/false = 已确定
-  const [activeTab, setActiveTab] = useState<'wardrobe' | 'tryon' | 'chat'>('wardrobe'); // 当前标签页
   const [lang, setLang] = useState<Language>(() => StorageService.loadLanguage() || 'zh'); // 当前语言 (默认中文)
   const [modelTier, setModelTier] = useState<ModelTier>(() => StorageService.loadModelTier() || 'free'); // 模型等级 (Free/Paid)
   const [isVerifyingKey, setIsVerifyingKey] = useState(false); // 是否正在验证 Key
+  
+  // 认证管理
+  const auth = useAuth();
+  
+  // 根据登录状态设置初始标签页：未登录显示首页，已登录显示衣橱
+  const [activeTab, setActiveTab] = useState<'home' | 'wardrobe' | 'tryon' | 'chat'>(() => {
+    return auth.isAuthenticated ? 'wardrobe' : 'home';
+  });
   
   // 核心数据状态：衣橱列表（从本地存储初始化）
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>(() => {
@@ -41,6 +52,8 @@ const AppContent: React.FC = () => {
 
   const [showProfileModal, setShowProfileModal] = useState(false); // 控制个人资料弹窗
   const [showLangMenu, setShowLangMenu] = useState(false); // 控制语言菜单
+  const [showLogin, setShowLogin] = useState(false); // 控制登录页面显示
+  const [showRegister, setShowRegister] = useState(false); // 控制注册页面显示
   const photoInputRef = useRef<HTMLInputElement>(null); // 隐藏的文件 Input 引用
 
   // Toast 通知管理
@@ -56,7 +69,7 @@ const AppContent: React.FC = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
         
-        const response = await fetch(`${API_BASE_URL}/health`, {
+        const response = await fetch(`${API_BASE_URL}/app/health`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
@@ -71,6 +84,22 @@ const AppContent: React.FC = () => {
     };
     checkBackendConnection();
   }, []);
+
+  // 设置未授权回调
+  useEffect(() => {
+    setUnauthorizedCallback(() => {
+      setShowLogin(true);
+    });
+  }, []);
+
+  // 当登录状态改变时，调整当前标签页
+  useEffect(() => {
+    if (!auth.isAuthenticated && activeTab !== 'home') {
+      setActiveTab('home');
+    } else if (auth.isAuthenticated && activeTab === 'home') {
+      setActiveTab('wardrobe');
+    }
+  }, [auth.isAuthenticated, activeTab]);
 
   // 保存衣橱数据到本地存储（当衣橱变化时）
   useEffect(() => {
@@ -297,8 +326,39 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden text-gray-900">
+      {/* 登录页面 */}
+      {showLogin && (
+        <Login
+          onClose={() => setShowLogin(false)}
+          onSuccess={() => {
+            setShowLogin(false);
+          }}
+          onSwitchToRegister={() => {
+            setShowLogin(false);
+            setShowRegister(true);
+          }}
+        />
+      )}
+
+      {/* 注册页面 */}
+      {showRegister && (
+        <Register
+          onClose={() => setShowRegister(false)}
+          onSuccess={() => {
+            setShowRegister(false);
+          }}
+          onSwitchToLogin={() => {
+            setShowRegister(false);
+            setShowLogin(true);
+          }}
+        />
+      )}
+
       {/* 主内容区域 */}
       <main className="flex-1 overflow-hidden relative">
+        {activeTab === 'home' && (
+          <Home lang={lang} />
+        )}
         {activeTab === 'wardrobe' && (
           <Wardrobe 
             items={wardrobe} 
@@ -511,7 +571,21 @@ const AppContent: React.FC = () => {
       {/* 底部导航栏 */}
       <nav className="bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
         <button 
-          onClick={() => setActiveTab('wardrobe')}
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-black' : 'text-gray-400'}`}
+        >
+          <HomeIcon size={24} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
+          <span className="text-[10px] font-medium">{lang === 'zh' ? '首页' : lang === 'en' ? 'Home' : 'ホーム'}</span>
+        </button>
+        
+        <button 
+          onClick={() => {
+            if (!auth.isAuthenticated) {
+              setShowLogin(true);
+            } else {
+              setActiveTab('wardrobe');
+            }
+          }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'wardrobe' ? 'text-black' : 'text-gray-400'}`}
         >
           <Shirt size={24} strokeWidth={activeTab === 'wardrobe' ? 2.5 : 2} />
@@ -519,7 +593,13 @@ const AppContent: React.FC = () => {
         </button>
         
         <button 
-          onClick={() => setActiveTab('tryon')}
+          onClick={() => {
+            if (!auth.isAuthenticated) {
+              setShowLogin(true);
+            } else {
+              setActiveTab('tryon');
+            }
+          }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'tryon' ? 'text-black' : 'text-gray-400'}`}
         >
           <div className={`p-1 rounded-lg ${activeTab === 'tryon' ? 'bg-gray-100' : ''}`}>
@@ -529,7 +609,13 @@ const AppContent: React.FC = () => {
         </button>
 
         <button 
-          onClick={() => setActiveTab('chat')}
+          onClick={() => {
+            if (!auth.isAuthenticated) {
+              setShowLogin(true);
+            } else {
+              setActiveTab('chat');
+            }
+          }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'chat' ? 'text-black' : 'text-gray-400'}`}
         >
           <MessageSquareHeart size={24} strokeWidth={activeTab === 'chat' ? 2.5 : 2} />
@@ -540,11 +626,13 @@ const AppContent: React.FC = () => {
   );
 };
 
-// 包装 App 组件以提供 Toast Context
+// 包装 App 组件以提供 Toast Context 和 Auth Context
 const App: React.FC = () => {
   return (
     <ToastProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ToastProvider>
   );
 };

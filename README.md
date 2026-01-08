@@ -13,8 +13,10 @@
 
 2. 配置后端 API 地址（创建 `.env.local` 文件）：
    ```env
-   VITE_API_BASE_URL=http://localhost:3001/api
+   VITE_API_BASE_URL=http://localhost:9090/api
    ```
+   **注意**：后端服务运行在 9090 端口。如果不创建此文件，开发服务器会自动代理 `/api` 请求到 `http://localhost:9090`。
+   
    详细 API 配置请参考 [API_CONFIG.md](API_CONFIG.md)
 
 3. 启动开发服务器：

@@ -57,6 +57,49 @@ export type Language = 'zh' | 'en' | 'ja';
 // 模型层级类型 (免费/付费)
 export type ModelTier = 'free' | 'paid';
 
+// ========== 认证相关类型 ==========
+
+// 认证响应
+export interface AuthResponse {
+  token: string;    // JWT 令牌
+  userId: number;   // 用户ID
+  username: string; // 用户名
+}
+
+// 发送验证码请求
+export interface SendCodeRequest {
+  target: string;  // 接收目标(手机号或邮箱)
+  type: 'sms' | 'email'; // 类型: sms 或 email
+}
+
+// 手机号验证码登录/注册请求
+export interface SmsLoginRequest {
+  phone: string;      // 手机号
+  verifyCode: string; // 短信验证码
+}
+
+// 邮箱注册请求
+export interface EmailRegisterRequest {
+  username: string;   // 用户名
+  email: string;      // 邮箱
+  password: string;   // 密码
+  verifyCode: string; // 验证码
+}
+
+// 密码登录请求
+export interface LoginRequest {
+  account: string;  // 账号(手机或邮箱)
+  password: string; // 密码
+}
+
+// 用户信息
+export interface UserInfo {
+  userId: number;
+  username: string;
+  email?: string;
+  phone?: string;
+}
+
 // 全局声明（保留以兼容旧代码，但不再使用）
 declare global {
   // 已移除 AIStudio 相关接口，改为直接调用后端 API

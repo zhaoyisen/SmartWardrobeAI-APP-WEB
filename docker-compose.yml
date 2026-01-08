@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  smart-wardrobe-app:
+    build: .
+    container_name: smart-wardrobe-app
+    restart: always
+    ports:
+      - "80:80"  # 【关键】外部访问用 8081，防止和 Admin 的 80 冲突

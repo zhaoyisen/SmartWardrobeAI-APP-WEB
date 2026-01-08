@@ -1,4 +1,5 @@
 import { ClothingItem, ClothingCategory, Language, ModelTier } from "../types";
+import { StorageService } from "../utils/storage";
 
 /**
  * API 基础配置
@@ -8,7 +9,33 @@ import { ClothingItem, ClothingCategory, Language, ModelTier } from "../types";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
+ * 未授权错误类
+ * 用于标识401错误，触发登录流程
+ */
+export class UnauthorizedError extends Error {
+  constructor(message: string = '未授权，请先登录') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+/**
+ * 未授权回调函数
+ * 当API请求返回401时，会调用此函数
+ */
+let onUnauthorizedCallback: (() => void) | null = null;
+
+/**
+ * 设置未授权回调
+ * 在AuthContext中调用此函数设置回调
+ */
+export const setUnauthorizedCallback = (callback: () => void) => {
+  onUnauthorizedCallback = callback;
+};
+
+/**
  * 通用 API 请求函数
+ * 自动添加Authorization头，处理401错误
  */
 async function apiRequest<T>(
   endpoint: string,
@@ -17,6 +44,20 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  // 从localStorage获取token
+  const token = StorageService.loadToken();
+  
+  // 构建请求头
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  // 如果存在token，添加Authorization头
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
@@ -24,13 +65,24 @@ async function apiRequest<T>(
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
     
     clearTimeout(timeoutId);
+    
+    // 处理401未授权错误
+    if (response.status === 401) {
+      // 清除本地存储的token和用户信息
+      StorageService.clearToken();
+      StorageService.clearUserInfo();
+      
+      // 触发未授权回调
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
+      
+      throw new UnauthorizedError('登录已过期，请重新登录');
+    }
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
@@ -40,6 +92,9 @@ async function apiRequest<T>(
     return response.json();
   } catch (error) {
     clearTimeout(timeoutId);
+    if (error instanceof UnauthorizedError) {
+      throw error;
+    }
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('Request timeout. Please check your connection.');
     }
@@ -60,7 +115,7 @@ export const analyzeClothingImage = async (
   tier: ModelTier = 'free'
 ): Promise<Partial<ClothingItem>> => {
   try {
-    const response = await apiRequest<Partial<ClothingItem>>('/wardrobe/analyze', {
+    const response = await apiRequest<Partial<ClothingItem>>('/app/wardrobe/analyze', {
       method: 'POST',
       body: JSON.stringify({
         image: base64Image,
@@ -80,6 +135,7 @@ export const analyzeClothingImage = async (
 /**
  * 接口 2: 获取穿搭推荐
  * 调用后端 API 获取基于天气的穿搭推荐
+ * POST /api/app/ai/recommend
  */
 export const getOutfitRecommendation = async (
   wardrobe: ClothingItem[],
@@ -97,7 +153,7 @@ export const getOutfitRecommendation = async (
       };
       recommendationText: string;
       selectedItemIds: string[];
-    }>('/ai/recommend', {
+    }>('/app/ai/recommend', {
       method: 'POST',
       body: JSON.stringify({
         location,
@@ -123,6 +179,7 @@ export const getOutfitRecommendation = async (
 /**
  * 接口 3: 与搭配师聊天
  * 调用后端 API 进行对话
+ * POST /api/app/ai/chat
  */
 export const chatWithStylist = async (
   history: any[],
@@ -132,7 +189,7 @@ export const chatWithStylist = async (
   tier: ModelTier = 'free'
 ): Promise<string> => {
   try {
-    const response = await apiRequest<{ text: string }>('/ai/chat', {
+    const response = await apiRequest<{ text: string }>('/app/ai/chat', {
       method: 'POST',
       body: JSON.stringify({
         history,
@@ -153,6 +210,7 @@ export const chatWithStylist = async (
 /**
  * 接口 4: 生成试穿图像
  * 调用后端 API 生成虚拟试穿效果图
+ * POST /api/app/ai/try-on
  */
 export const generateTryOnImage = async (
   userDesc: string,
@@ -161,7 +219,7 @@ export const generateTryOnImage = async (
   tier: ModelTier = 'free'
 ): Promise<string | null> => {
   try {
-    const response = await apiRequest<{ imageUrl: string }>('/ai/try-on', {
+    const response = await apiRequest<{ imageUrl: string }>('/app/ai/try-on', {
       method: 'POST',
       body: JSON.stringify({
         userDescription: userDesc,
@@ -188,10 +246,11 @@ export const generateTryOnImage = async (
 /**
  * 接口 5: 验证专业版模型访问权限
  * 调用后端 API 验证 Pro 模型访问权限
+ * POST /api/app/ai/validate-pro
  */
 export const validateProModelAccess = async (): Promise<boolean> => {
   try {
-    const response = await apiRequest<{ valid: boolean }>('/ai/validate-pro', {
+    const response = await apiRequest<{ valid: boolean }>('/app/ai/validate-pro', {
       method: 'POST',
     });
 

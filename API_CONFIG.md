@@ -9,15 +9,17 @@
 在 `.env.local` 文件中配置后端 API 地址：
 
 ```env
-VITE_API_BASE_URL=http://localhost:3001/api
+VITE_API_BASE_URL=http://localhost:9090/api
 ```
+
+**注意**：后端服务默认运行在 9090 端口。
 
 如果不配置，默认使用相对路径 `/api`（适用于同域部署）。
 
 ### API 端点列表
 
 #### 1. 分析衣物图像
-**POST** `/api/wardrobe/analyze`
+**POST** `/api/app/wardrobe/analyze`
 
 **请求体：**
 ```json
@@ -41,7 +43,7 @@ VITE_API_BASE_URL=http://localhost:3001/api
 ---
 
 #### 2. 获取穿搭推荐
-**POST** `/api/ai/recommend`
+**POST** `/api/app/ai/recommend`
 
 **请求体：**
 ```json
@@ -77,7 +79,7 @@ VITE_API_BASE_URL=http://localhost:3001/api
 ---
 
 #### 3. 搭配师聊天
-**POST** `/api/ai/chat`
+**POST** `/api/app/ai/chat`
 
 **请求体：**
 ```json
@@ -105,7 +107,7 @@ VITE_API_BASE_URL=http://localhost:3001/api
 ---
 
 #### 4. 生成试穿图像
-**POST** `/api/ai/try-on`
+**POST** `/api/app/ai/try-on`
 
 **请求体：**
 ```json
@@ -135,7 +137,7 @@ VITE_API_BASE_URL=http://localhost:3001/api
 ---
 
 #### 5. 验证 Pro 模型权限
-**POST** `/api/ai/validate-pro`
+**POST** `/api/app/ai/validate-pro`
 
 **请求体：** 无（使用请求头中的认证信息）
 
