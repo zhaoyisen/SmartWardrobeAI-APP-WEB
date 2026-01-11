@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Plus, X, Camera } from 'lucide-react';
-import { ClothingItem, ClothingCategory, Language, ModelTier } from '../types';
+import { ClothingItem, ClothingCategory, Language, ModelTier, ModelConfig } from '../types';
 import { getTranslation } from '../utils/translations';
+import { UploadModal } from './UploadModal';
 
 interface WardrobeProps {
   items: ClothingItem[]; // 衣物列表
@@ -9,7 +10,8 @@ interface WardrobeProps {
   lang: Language; // 当前语言
   modelTier: ModelTier; // 模型等级
   // 全局上传处理 Props
-  onUpload: (files: FileList | null) => void; 
+  onUpload: (files: File[], modelConfig: ModelConfig) => void; // 暂时不使用（分析流程在 UploadModal 内部完成）
+  onRefresh?: () => void; // 刷新列表回调（保存衣物后调用）
   uploadStatus: { isUploading: boolean; current: number; total: number };
   backendAvailable?: boolean | null; // 后端可用性状态
 }
@@ -24,25 +26,35 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
   lang, 
   modelTier, 
   onUpload, 
+  onRefresh,
   uploadStatus,
   backendAvailable
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<string>('All'); // 当前筛选类别
+  const [showUploadModal, setShowUploadModal] = useState(false); // 控制上传模态框显示
   
   const t = getTranslation(lang);
 
-  // 处理文件选择，触发上传回调
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpload(e.target.files);
-    // 重置 input 以允许再次选择相同文件
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  // 处理上传（从模态框回调）- 暂时不再使用，因为分析流程在 UploadModal 内部完成
+  const handleUploadFromModal = (files: File[], modelConfig: ModelConfig) => {
+    // 这个回调暂时不会被调用，因为 UploadModal 现在独立处理分析流程
+    // 保留它以保持接口兼容性
+  };
+
+  // 处理保存完成（从模态框回调）- 用于刷新衣橱列表
+  const handleSaveComplete = () => {
+    // 保存完成后刷新衣橱列表
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   // 过滤显示的衣物
+  // 防御性检查：确保items是数组，防止后端返回错误数据时页面崩溃
+  const safeItems = Array.isArray(items) ? items : [];
   const filteredItems = filter === 'All' 
-    ? items 
-    : items.filter(item => item.category === filter);
+    ? safeItems 
+    : safeItems.filter(item => item.category === filter);
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
@@ -112,7 +124,7 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
 
       {/* 悬浮上传按钮 (FAB) */}
       <button
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => setShowUploadModal(true)}
         disabled={uploadStatus.isUploading}
         className="absolute bottom-6 right-6 w-14 h-14 bg-black text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform disabled:bg-gray-400 z-20"
       >
@@ -122,14 +134,15 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
           <Plus size={28} />
         )}
       </button>
-      {/* 隐藏的文件输入框 */}
-      <input 
-        type="file" 
-        multiple
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        accept="image/*" 
-        className="hidden" 
+
+      {/* 上传模态框 */}
+      <UploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUploadFromModal}
+        onSaveComplete={handleSaveComplete}
+        lang={lang}
+        isUploading={uploadStatus.isUploading}
       />
     </div>
   );

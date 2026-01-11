@@ -12,8 +12,8 @@ export enum ClothingCategory {
 
 // 单件衣物的数据结构
 export interface ClothingItem {
-  id: string;           // 唯一标识符
-  imageUrl: string;     // 图片数据 (Base64 或 URL)
+  id: string;           // 唯一标识符（由后端生成）
+  imageUrl: string;     // 图片URL（后端返回的图片访问地址，如 /api/app/wardrobe/image/:id）
   category: ClothingCategory; // 分类
   tags: string[];       // 标签列表 (AI分析生成)
   description: string;  // 描述文本
@@ -26,7 +26,7 @@ export interface UserProfile {
   weight: number;       // 体重 (kg)
   gender: 'male' | 'female' | 'unisex'; // 性别
   stylePreference: string; // 风格偏好
-  userPhoto?: string;   // 用户上传的全身照 (Base64)
+  userPhoto?: string;   // 用户上传的全身照 URL（后端返回的图片访问地址）
 }
 
 // 聊天消息结构
@@ -56,6 +56,74 @@ export type Language = 'zh' | 'en' | 'ja';
 
 // 模型层级类型 (免费/付费)
 export type ModelTier = 'free' | 'paid';
+
+// ========== AI模型相关类型 ==========
+
+// AI模型信息 (对应后端 AiModelVO)
+export interface AiModelVO {
+  modelKey: string;              // 模型Key（前端传参标识）
+  label: string;                 // 模型展示名称
+  modelName: string;             // 底层模型ID（API调用名称）
+  baseUrl: string;               // 接口Base URL
+  supportThinking: boolean;      // 是否支持思考模式
+  maxThinkingBudget?: number;    // 最大允许的思考Token数
+  defaultEnableThinking?: boolean; // 默认是否开启思考模式
+  defaultThinkingBudget?: number; // 默认思考Token预算
+  sort?: number;                 // 排序值
+}
+
+// 模型配置（用户选择的配置）
+export interface ModelConfig {
+  modelKey: string;              // 模型标识
+  enableThinking?: boolean;      // 是否开启思考模式
+  thinkingBudget?: number;       // 思考Token预算
+}
+
+// AI执行参数DTO (对应后端 AiExecutionDTO)
+export interface AiExecutionDTO {
+  modelKey: string;              // 模型唯一标识Key（必填）
+  enableThinking?: boolean;      // 是否开启思考模式（可选，如果不支持思考模式则为false）
+  thinkingBudget?: number;       // 思考预算Token数（可选，仅在enableThinking=true时有效）
+}
+
+// 字典项接口
+export interface DictItem {
+  dictValue: string;             // 字典值（代码）
+  dictLabel: string;             // 字典标签（显示文本）
+}
+
+// 品类项接口（API返回格式）
+export interface CategoryItemRaw {
+  categoryCode: string;          // 品类代码
+  categoryDesc: string;          // 品类标签（显示文本）
+  region?: string;               // 默认部位（字典code）
+  layer?: string;                // 默认层级（字典code）
+  sort?: number;                 // 排序
+}
+
+// 品类项接口（前端使用格式）
+export interface CategoryItem {
+  code: string;                  // 品类代码
+  label: string;                 // 品类标签（显示文本）
+  region?: string;               // 默认部位（字典code）
+  layer?: string;                // 默认层级（字典code）
+  sort?: number;                 // 排序
+}
+
+// AI智能分析结果VO (对应后端 ClothingAnalysisVO)
+export interface ClothingAnalysisVO {
+  imageId: number;               // 原始图片ID（保存时需传回）
+  imageUrl: string;              // 原始图片URL（用于回显）
+  maskImageId?: number;          // AI去底图ID（可能为空）
+  maskImageUrl?: string;         // AI去底图URL（可能为空）
+  category: string;              // 识别出的品类（存储品类code）
+  region: string;                // 自动推断的部位（存储dict_value）
+  defaultLayer: number;          // 自动推断的建议层级（存储dict_value对应的数字或字符串）
+  color: string;                 // 识别出的主色调（存储dict_value）
+  season: string;                // 识别出的季节（存储dict_value，可能逗号分隔多个值）
+  fitType: string;               // 识别出的版型（存储dict_value）
+  viewType: string;              // 识别出的视角（存储dict_value）
+}
 
 // ========== 认证相关类型 ==========
 
