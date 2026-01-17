@@ -388,34 +388,45 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
   };
 
   // 根据用户实际拥有的数据过滤筛选选项
+  // 如果 filterOptions 中某项为空或不存在，返回空数组（不显示该筛选栏）
   const getFilteredRegionDict = (): DictItem[] => {
-    if (!filterOptions.regions || filterOptions.regions.length === 0) return regionDict;
+    if (!filterOptions.regions || filterOptions.regions.length === 0) return [];
     return regionDict.filter(item => filterOptions.regions!.includes(item.dictValue));
   };
 
   const getFilteredCategories = (): CategoryItem[] => {
-    if (!filterOptions.categories || filterOptions.categories.length === 0) return categories;
+    if (!filterOptions.categories || filterOptions.categories.length === 0) return [];
     return categories.filter(item => filterOptions.categories!.includes(item.code));
   };
 
   const getFilteredLayerDict = (): DictItem[] => {
-    if (!filterOptions.layers || filterOptions.layers.length === 0) return layerDict;
+    if (!filterOptions.layers || filterOptions.layers.length === 0) return [];
     return layerDict.filter(item => filterOptions.layers!.includes(Number(item.dictValue)));
   };
 
   const getFilteredColorDict = (): DictItem[] => {
-    if (!filterOptions.colors || filterOptions.colors.length === 0) return colorDict;
+    if (!filterOptions.colors || filterOptions.colors.length === 0) return [];
     return colorDict.filter(item => filterOptions.colors!.includes(item.dictValue));
   };
 
   const getFilteredSeasonDict = (): DictItem[] => {
-    if (!filterOptions.seasons || filterOptions.seasons.length === 0) return seasonDict;
+    if (!filterOptions.seasons || filterOptions.seasons.length === 0) return [];
     return seasonDict.filter(item => filterOptions.seasons!.includes(item.dictValue));
   };
 
   const getFilteredFitTypeDict = (): DictItem[] => {
-    if (!filterOptions.fitTypes || filterOptions.fitTypes.length === 0) return fitTypeDict;
+    if (!filterOptions.fitTypes || filterOptions.fitTypes.length === 0) return [];
     return fitTypeDict.filter(item => filterOptions.fitTypes!.includes(item.dictValue));
+  };
+
+  // 检查是否有任何筛选选项可用
+  const hasAnyFilterOptions = (): boolean => {
+    return getFilteredCategories().length > 0 ||
+           getFilteredRegionDict().length > 0 ||
+           getFilteredLayerDict().length > 0 ||
+           getFilteredColorDict().length > 0 ||
+           getFilteredSeasonDict().length > 0 ||
+           getFilteredFitTypeDict().length > 0;
   };
 
   return (
@@ -425,6 +436,7 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
         <h2 className="text-2xl font-bold text-gray-800 mb-4">{t.wardrobe.title}</h2>
         
         {/* 筛选栏容器 */}
+        {hasAnyFilterOptions() && (
         <div className="space-y-3">
           {/* 品类筛选 */}
           {getFilteredCategories().length > 0 && (
@@ -622,6 +634,7 @@ export const Wardrobe: React.FC<WardrobeProps> = ({
             </>
           )}
         </div>
+        )}
         {/* 控制栏：列数选择和图片切换 */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
           {/* 列数选择 */}
