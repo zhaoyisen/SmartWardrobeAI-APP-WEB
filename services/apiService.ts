@@ -1,4 +1,4 @@
-import { ClothingItem, ClothingCategory, Language, ModelTier, UserProfile, AiModelVO, ModelConfig, AiExecutionDTO, ClothingAnalysisVO, DictItem, CategoryItem, CategoryItemRaw } from "../types";
+import { ClothingItem, ClothingCategory, Language, ModelTier, UserProfile, AiModelVO, ModelConfig, AiExecutionDTO, ClothingAnalysisVO, DictItem, CategoryItem, CategoryItemRaw, ClothingCreateDTO, ClothingVO, PageResult, ClothingQueryDTO, ClothingUpdateDTO, ClothingFilterOptionsVO } from "../types";
 import { StorageService } from "../utils/storage";
 
 /**
@@ -308,7 +308,7 @@ export const validateProModelAccess = async (): Promise<boolean> => {
 };
 
 /**
- * 接口 6: 获取衣橱列表
+ * 接口 6: 获取衣橱列表 (旧接口，保留以兼容)
  * 从后端获取用户的所有衣物
  * GET /api/app/wardrobe/list
  */
@@ -329,6 +329,78 @@ export const getWardrobeList = async (): Promise<ClothingItem[]> => {
     // 发生错误时返回空数组而不是抛出错误，避免页面崩溃
     // 调用方可以通过检查数组长度来判断是否成功
     return [];
+  }
+};
+
+/**
+ * 接口 6.5: 分页查询衣物列表
+ * 从后端分页获取用户的衣物，支持部位筛选
+ * GET /api/app/clothing/list
+ */
+export const getClothingList = async (query: ClothingQueryDTO = {}): Promise<PageResult<ClothingVO>> => {
+  try {
+    // 构建查询参数
+    const params = new URLSearchParams();
+    if (query.region) {
+      params.append('region', query.region);
+    }
+    if (query.category) {
+      params.append('category', query.category);
+    }
+    if (query.defaultLayer !== undefined) {
+      params.append('defaultLayer', query.defaultLayer.toString());
+    }
+    if (query.color) {
+      params.append('color', query.color);
+    }
+    if (query.season) {
+      params.append('season', query.season);
+    }
+    if (query.fitType) {
+      params.append('fitType', query.fitType);
+    }
+    if (query.current !== undefined) {
+      params.append('current', query.current.toString());
+    }
+    if (query.size !== undefined) {
+      params.append('size', query.size.toString());
+    }
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/app/clothing/list?${queryString}` : '/app/clothing/list';
+    
+    const response = await apiRequest<PageResult<ClothingVO>>(endpoint, {
+      method: 'GET',
+    });
+
+    // 确保返回的是有效的分页结果
+    if (response && typeof response === 'object') {
+      return {
+        records: Array.isArray(response.records) ? response.records : [],
+        total: response.total || 0,
+        pages: response.pages || 0,
+        current: response.current || 1,
+        size: response.size || 10,
+      };
+    }
+    console.warn('Backend returned invalid page result, defaulting to empty result:', response);
+    return {
+      records: [],
+      total: 0,
+      pages: 0,
+      current: 1,
+      size: 10,
+    };
+  } catch (error) {
+    console.error("Failed to fetch clothing list", error);
+    // 发生错误时返回空的分页结果
+    return {
+      records: [],
+      total: 0,
+      pages: 0,
+      current: 1,
+      size: 10,
+    };
   }
 };
 
@@ -560,7 +632,7 @@ export const addClothingItemToBackend = async (
 };
 
 /**
- * 接口 9: 从后端删除衣物
+ * 接口 9: 从后端删除衣物 (旧接口，保留以兼容)
  * DELETE /api/app/wardrobe/:id
  */
 export const deleteClothingItemFromBackend = async (id: string): Promise<void> => {
@@ -570,6 +642,113 @@ export const deleteClothingItemFromBackend = async (id: string): Promise<void> =
     });
   } catch (error) {
     console.error("Failed to delete clothing item", error);
+    throw error;
+  }
+};
+
+/**
+ * 接口 9.5: 删除衣物
+ * DELETE /api/app/clothing/:id
+ */
+export const deleteClothing = async (id: number): Promise<void> => {
+  try {
+    await apiRequest<{ success: boolean }>(`/app/clothing/${id}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error("Failed to delete clothing", error);
+    throw error;
+  }
+};
+
+/**
+ * 接口 8.5: 新增衣物
+ * 根据分析结果创建衣物记录
+ * POST /api/app/clothing/add
+ * @deprecated 请使用 saveClothing 统一接口
+ */
+export const createClothing = async (dto: ClothingCreateDTO): Promise<ClothingItem> => {
+  try {
+    // 验证必填字段
+    if (!dto.imageId) {
+      throw new Error('imageId is required');
+    }
+    if (!dto.category) {
+      throw new Error('category is required');
+    }
+    if (!dto.color) {
+      throw new Error('color is required');
+    }
+    if (!dto.season) {
+      throw new Error('season is required');
+    }
+
+    const response = await apiRequest<ClothingItem>('/app/clothing/add', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Failed to create clothing item", error);
+    throw error;
+  }
+};
+
+/**
+ * 接口 8.6: 更新衣物
+ * 更新衣物信息
+ * PUT /api/app/clothing/:id
+ * @deprecated 请使用 saveClothing 统一接口
+ */
+export const updateClothing = async (id: number, dto: ClothingUpdateDTO): Promise<ClothingVO> => {
+  try {
+    if (!id) {
+      throw new Error('id is required');
+    }
+
+    const response = await apiRequest<ClothingVO>(`/app/clothing/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dto),
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Failed to update clothing", error);
+    throw error;
+  }
+};
+
+/**
+ * 接口 8.7: 保存衣物（新增或编辑）
+ * 统一的新增和编辑接口
+ * POST /api/app/clothing/save
+ * 当 dto.id 为 null 或 undefined 时表示新增，不为 null 时表示编辑
+ */
+export const saveClothing = async (dto: ClothingCreateDTO): Promise<ClothingVO> => {
+  try {
+    // 验证必填字段
+    if (!dto.imageId) {
+      throw new Error('imageId is required');
+    }
+    if (!dto.category) {
+      throw new Error('category is required');
+    }
+    if (!dto.color) {
+      throw new Error('color is required');
+    }
+    if (!dto.season) {
+      throw new Error('season is required');
+    }
+
+    const response = await apiRequest<ClothingVO>('/app/clothing/save', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Failed to save clothing item", error);
     throw error;
   }
 };
@@ -732,6 +911,51 @@ export const getDictList = async (dictType: string): Promise<DictItem[]> => {
     console.error(`Failed to fetch dict list for ${dictType}`, error);
     // 发生错误时返回空数组而不是抛出错误，避免页面崩溃
     return [];
+  }
+};
+
+/**
+ * 接口 15: 获取衣物筛选选项
+ * 从后端获取当前用户已有的筛选选项（部位、品类、层级、颜色、季节、版型）
+ * GET /api/app/clothing/filter-options
+ */
+export const getClothingFilterOptions = async (): Promise<ClothingFilterOptionsVO> => {
+  try {
+    const response = await apiRequest<ClothingFilterOptionsVO>('/app/clothing/filter-options', {
+      method: 'GET',
+    });
+
+    // 确保返回的是有效的筛选选项对象
+    if (response && typeof response === 'object') {
+      return {
+        regions: Array.isArray(response.regions) ? response.regions : [],
+        categories: Array.isArray(response.categories) ? response.categories : [],
+        layers: Array.isArray(response.layers) ? response.layers : [],
+        colors: Array.isArray(response.colors) ? response.colors : [],
+        seasons: Array.isArray(response.seasons) ? response.seasons : [],
+        fitTypes: Array.isArray(response.fitTypes) ? response.fitTypes : [],
+      };
+    }
+    console.warn('Backend returned invalid filter options, defaulting to empty object:', response);
+    return {
+      regions: [],
+      categories: [],
+      layers: [],
+      colors: [],
+      seasons: [],
+      fitTypes: [],
+    };
+  } catch (error) {
+    console.error("Failed to fetch clothing filter options", error);
+    // 发生错误时返回空对象而不是抛出错误，避免页面崩溃
+    return {
+      regions: [],
+      categories: [],
+      layers: [],
+      colors: [],
+      seasons: [],
+      fitTypes: [],
+    };
   }
 };
 

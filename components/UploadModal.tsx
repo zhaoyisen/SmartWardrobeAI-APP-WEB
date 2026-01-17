@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronRight, ChevronLeft, Upload, FileImage, Loader2, Check, Save, Edit, XCircle, Info, ChevronDown } from 'lucide-react';
-import { Language, AiModelVO, ModelConfig, ClothingAnalysisVO, AiExecutionDTO, DictItem, CategoryItem } from '../types';
+import { Language, AiModelVO, ModelConfig, ClothingAnalysisVO, AiExecutionDTO, DictItem, CategoryItem, ClothingCreateDTO } from '../types';
 import { getTranslation } from '../utils/translations';
-import { getAiModelList, analyzeClothingImage, BusinessError, getCategoryList, getDictList } from '../services/apiService';
+import { getAiModelList, analyzeClothingImage, BusinessError, getCategoryList, getDictList, saveClothing } from '../services/apiService';
 import { useToastContext } from '../contexts/ToastContext';
+import { compressImage } from '../utils/imageCompression';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -34,12 +35,24 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const [thinkingBudget, setThinkingBudget] = useState<number>(0);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [analysisResults, setAnalysisResults] = useState<(ClothingAnalysisVO & { originalFile: File })[]>([]);
+  const [analysisResults, setAnalysisResults] = useState<(ClothingAnalysisVO & { 
+    originalFile: File;
+    // 用户补充信息字段
+    name?: string;
+    shelfNo?: string;
+    price?: number;
+    purchaseDate?: string;
+    brand?: string;
+    size?: string;
+    status?: number;
+    wearCount?: number;
+  })[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingProgress, setAnalyzingProgress] = useState({ current: 0, total: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   
   // 字典和品类数据
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -202,20 +215,65 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   // 处理文件选择（单文件模式）
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
+      
+      // 检查文件类型是否为图片
+      if (!file.type.startsWith('image/')) {
+        showError(
+          lang === 'zh' ? '请选择有效的图片文件' : 'Please select valid image files',
+          3000
+        );
+        // 重置 input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+      
       // 清理旧的预览URL
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
-      // 创建新的预览URL
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      setSelectedFiles([file]);
+      
       // 清除之前的错误
       setAnalysisError(null);
+      
+      // 开始压缩处理
+      setIsCompressing(true);
+      try {
+        // 压缩图片（自动调整分辨率和大小）
+        // 注意：压缩后的文件会替换原始文件，后续传给后端的也是压缩后的文件
+        const compressedFile = await compressImage(file, 3, 3000, 3000, 50, 50);
+        
+        // 创建新的预览URL（使用压缩后的文件）
+        const url = URL.createObjectURL(compressedFile);
+        setPreviewUrl(url);
+        // 将压缩后的文件保存到 selectedFiles，后续传给后端的就是这个压缩后的文件
+        setSelectedFiles([compressedFile]);
+        
+        // 显示成功提示（可选，如果文件被压缩了）
+        if (compressedFile.size < file.size) {
+          const sizeReduction = ((1 - compressedFile.size / file.size) * 100).toFixed(1);
+          showSuccess(
+            lang === 'zh' 
+              ? `图片已优化，大小减少 ${sizeReduction}%` 
+              : `Image optimized, size reduced by ${sizeReduction}%`,
+            2000
+          );
+        }
+      } catch (error) {
+        console.error('图片压缩失败:', error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : (lang === 'zh' ? '图片处理失败，请重试' : 'Image processing failed, please try again');
+        showError(errorMessage, 5000);
+        setAnalysisError(errorMessage);
+      } finally {
+        setIsCompressing(false);
+      }
     }
     // 重置 input 以允许再次选择相同文件
     if (fileInputRef.current) {
@@ -335,9 +393,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       };
 
       // 逐个分析文件（现在只处理一个文件）
+      // 注意：validFiles 中的文件已经是压缩后的文件（在 handleFileChange 中已处理）
       for (let i = 0; i < validFiles.length; i++) {
         setAnalyzingProgress({ current: i + 1, total: validFiles.length });
         try {
+          // 传给后端的是压缩后的文件（已调整分辨率和大小）
           const result = await analyzeClothingImage(validFiles[i], config);
           results.push({ ...result, originalFile: validFiles[i] });
         } catch (error) {
@@ -425,8 +485,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     return seasonStr.split(',').map(s => s.trim()).filter(s => s);
   };
 
-  // 更新分析结果字段
-  const handleResultFieldChange = (index: number, field: keyof ClothingAnalysisVO, value: string | number) => {
+  // 更新分析结果字段（包括扩展字段）
+  const handleResultFieldChange = (index: number, field: string, value: string | number) => {
     setAnalysisResults(prev => prev.map((result, i) => {
       if (i === index) {
         const updatedResult = { ...result, [field]: value };
@@ -454,19 +514,58 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     }));
   };
 
-  // 保存衣物（占位函数）
+  // 保存衣物
   const handleSaveClothing = async () => {
+    if (analysisResults.length === 0) {
+      showError(
+        lang === 'zh' ? '没有可保存的衣物' : 'No clothing items to save',
+        3000
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // TODO: 实现保存逻辑
-      // 这里暂时只是占位，实际保存逻辑等待后续实现
-      // 需要调用后端接口保存衣物，使用 analysisResults 中的数据
-      // 每个结果包含：imageId, category, region, defaultLayer, color, season, fitType, viewType 等
+      // 逐个保存衣物
+      for (let i = 0; i < analysisResults.length; i++) {
+        const result = analysisResults[i];
+        
+        // 构建 ClothingCreateDTO 对象（新增时不传id）
+        const dto: ClothingCreateDTO = {
+          // 新增时不传id字段
+          // 必填字段
+          imageId: result.imageId,
+          category: result.category,
+          color: result.color,
+          season: result.season,
+          
+          // 可选字段
+          maskImageId: result.maskImageId,
+          region: result.region,
+          defaultLayer: result.defaultLayer,
+          fitType: result.fitType,
+          viewType: result.viewType,
+          name: result.name,
+          shelfNo: result.shelfNo,
+          price: result.price !== undefined && result.price > 0 ? result.price : undefined,
+          purchaseDate: result.purchaseDate,
+          brand: result.brand,
+          size: result.size,
+          status: result.status !== undefined ? result.status : 1, // 默认为1（在柜）
+          wearCount: result.wearCount !== undefined ? result.wearCount : 0, // 默认为0
+        };
+        
+        // 调用统一保存接口（新增场景，不传id）
+        await saveClothing(dto);
+      }
       
-      console.log('Saving clothing items:', analysisResults);
-      
-      // 模拟保存延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 保存成功提示
+      showSuccess(
+        lang === 'zh' 
+          ? `成功保存 ${analysisResults.length} 件衣物` 
+          : `Successfully saved ${analysisResults.length} clothing item(s)`,
+        3000
+      );
       
       // 保存成功后，调用回调刷新列表（如果提供）
       if (onSaveComplete) {
@@ -477,7 +576,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to save clothing:', error);
-      // 这里可以显示错误提示
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (lang === 'zh' ? '保存失败，请重试' : 'Failed to save, please try again');
+      showError(errorMessage, 5000);
     } finally {
       setIsSaving(false);
     }
@@ -686,6 +788,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 </div>
               )}
 
+              {/* 压缩进度 */}
+              {isCompressing && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">
+                      {lang === 'zh' ? '正在处理图片...' : 'Processing image...'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* 分析进度 */}
               {isAnalyzing && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -712,7 +826,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                     
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isAnalyzing}
+                      disabled={isAnalyzing || isCompressing}
                       className="w-full py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-black transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Upload size={32} className="text-gray-400" />
@@ -970,6 +1084,112 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                           </option>
                         ))}
                       </select>
+                    </div>
+                    
+                    {/* 分隔线 */}
+                    <div className="col-span-2 border-t border-gray-200 my-2"></div>
+                    
+                    {/* 用户补充信息 */}
+                    {/* 衣物名称 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.name}</label>
+                      <input
+                        type="text"
+                        value={result.name || ''}
+                        onChange={(e) => handleResultFieldChange(index, 'name', e.target.value)}
+                        maxLength={64}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder={lang === 'zh' ? '可选，不填自动生成' : 'Optional, auto-generated if empty'}
+                      />
+                    </div>
+                    {/* 货架号 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.shelfNo}</label>
+                      <input
+                        type="text"
+                        value={result.shelfNo || ''}
+                        onChange={(e) => handleResultFieldChange(index, 'shelfNo', e.target.value)}
+                        maxLength={32}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder={lang === 'zh' ? '如：A-1-05' : 'e.g. A-1-05'}
+                      />
+                    </div>
+                    {/* 购买价格 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.price}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={result.price !== undefined ? result.price : ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                          handleResultFieldChange(index, 'price', value !== undefined ? value : 0);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder={lang === 'zh' ? '如：99.90' : 'e.g. 99.90'}
+                      />
+                    </div>
+                    {/* 购买日期 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.purchaseDate}</label>
+                      <input
+                        type="date"
+                        value={result.purchaseDate || ''}
+                        onChange={(e) => handleResultFieldChange(index, 'purchaseDate', e.target.value)}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                      />
+                    </div>
+                    {/* 品牌 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.brand}</label>
+                      <input
+                        type="text"
+                        value={result.brand || ''}
+                        onChange={(e) => handleResultFieldChange(index, 'brand', e.target.value)}
+                        maxLength={64}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder={lang === 'zh' ? '如：Uniqlo' : 'e.g. Uniqlo'}
+                      />
+                    </div>
+                    {/* 尺码 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.size}</label>
+                      <input
+                        type="text"
+                        value={result.size || ''}
+                        onChange={(e) => handleResultFieldChange(index, 'size', e.target.value)}
+                        maxLength={32}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder={lang === 'zh' ? '如：L' : 'e.g. L'}
+                      />
+                    </div>
+                    {/* 初始状态 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.status}</label>
+                      <select
+                        value={result.status !== undefined ? result.status : 1}
+                        onChange={(e) => handleResultFieldChange(index, 'status', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors cursor-pointer"
+                      >
+                        <option value={1}>{t.uploadModal.statusInWardrobe}</option>
+                        <option value={2}>{t.uploadModal.statusWashing}</option>
+                        <option value={3}>{t.uploadModal.statusLent}</option>
+                        <option value={0}>{t.uploadModal.statusDiscarded}</option>
+                      </select>
+                    </div>
+                    {/* 初始穿着次数 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.uploadModal.wearCount}</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={result.wearCount || 0}
+                        onChange={(e) => handleResultFieldChange(index, 'wearCount', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent bg-white hover:border-gray-400 transition-colors"
+                        placeholder="0"
+                      />
                     </div>
                   </div>
                 </div>

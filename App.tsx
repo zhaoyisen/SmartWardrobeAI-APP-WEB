@@ -15,6 +15,7 @@ import {
   getWardrobeList,
   addClothingItemToBackend,
   deleteClothingItemFromBackend,
+  deleteClothing,
   getUserProfile,
   updateUserProfile,
   getModelTier
@@ -37,9 +38,7 @@ const AppContent: React.FC = () => {
     return auth.isAuthenticated ? 'wardrobe' : 'home';
   });
   
-  // 核心数据状态：衣橱列表（从后端加载）
-  const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
-  const [isLoadingWardrobe, setIsLoadingWardrobe] = useState(false);
+  // 注意：衣橱列表现在由 Wardrobe 组件内部管理，不再需要这里的状态
   
   // 全局上传进度状态
   const [uploadStatus, setUploadStatus] = useState({ isUploading: false, current: 0, total: 0 });
@@ -119,16 +118,6 @@ const AppContent: React.FC = () => {
     }
   }, [auth.isAuthenticated, activeTab]);
 
-  // 从后端加载衣橱列表（登录后自动加载）
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      loadWardrobeFromBackend();
-    } else {
-      // 未登录时清空衣橱列表
-      setWardrobe([]);
-    }
-  }, [auth.isAuthenticated]);
-
   // 从后端加载用户资料（登录后自动加载）
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -154,38 +143,7 @@ const AppContent: React.FC = () => {
     }
   }, [auth.isAuthenticated]);
 
-  // 从后端加载衣橱列表
-  const loadWardrobeFromBackend = async () => {
-    if (!auth.isAuthenticated) {
-      setWardrobe([]);
-      return;
-    }
-    
-    setIsLoadingWardrobe(true);
-    try {
-      const items = await getWardrobeList();
-      // 防御性检查：确保items是数组
-      if (Array.isArray(items)) {
-        setWardrobe(items);
-      } else {
-        console.error('getWardrobeList returned non-array:', items);
-        setWardrobe([]);
-        showError(lang === 'zh' ? '加载衣橱失败，返回数据格式错误' : 'Failed to load wardrobe: invalid data format');
-      }
-    } catch (error) {
-      console.error('Failed to load wardrobe:', error);
-      // 确保在错误情况下也设置为空数组
-      setWardrobe([]);
-      if (error instanceof UnauthorizedError) {
-        // 未授权错误已由 apiRequest 处理，这里只需要清空列表
-        // 不需要显示错误，因为用户会被重定向到登录页
-      } else {
-        showError(lang === 'zh' ? '加载衣橱失败，请稍后重试' : 'Failed to load wardrobe, please try again later');
-      }
-    } finally {
-      setIsLoadingWardrobe(false);
-    }
-  };
+  // 注意：衣橱列表现在由 Wardrobe 组件内部管理
 
   // 从后端加载用户资料
   const loadProfileFromBackend = async () => {
@@ -299,13 +257,12 @@ const AppContent: React.FC = () => {
   };
 
 
-  // 从后端删除衣物后刷新列表
-  const removeClothingItem = async (id: string) => {
+  // 删除衣物（id 为 number 类型）
+  const removeClothingItem = async (id: number) => {
     try {
-      await deleteClothingItemFromBackend(id);
-      // 删除成功后，刷新衣橱列表
-      await loadWardrobeFromBackend();
+      await deleteClothing(id);
       showSuccess(lang === 'zh' ? '删除成功' : 'Item deleted successfully');
+      // 注意：Wardrobe 组件会自己处理刷新，通过 onRefresh 回调或重新加载
     } catch (error) {
       console.error('Failed to delete clothing item:', error);
       if (error instanceof UnauthorizedError) {
@@ -475,12 +432,11 @@ const AppContent: React.FC = () => {
         )}
         {activeTab === 'wardrobe' && (
           <Wardrobe 
-            items={wardrobe} 
             onRemoveItem={removeClothingItem} 
             lang={lang}
             modelTier={modelTier}
             onUpload={handleBatchUpload}
-            onRefresh={loadWardrobeFromBackend}
+            onRefresh={undefined}
             uploadStatus={uploadStatus}
             backendAvailable={backendAvailable}
           />
@@ -488,7 +444,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'tryon' && (
           <TryOn 
             userProfile={userProfile} 
-            wardrobe={wardrobe} 
+            wardrobe={[]} 
             lang={lang}
             modelTier={modelTier}
             backendAvailable={backendAvailable}
@@ -598,7 +554,7 @@ const AppContent: React.FC = () => {
             {/* StylistChat 组件内容 */}
             <div className="flex-1 overflow-hidden rounded-2xl">
               <StylistChat 
-                wardrobe={wardrobe}
+                wardrobe={[]}
                 lang={lang}
                 modelTier={modelTier}
                 backendAvailable={backendAvailable}

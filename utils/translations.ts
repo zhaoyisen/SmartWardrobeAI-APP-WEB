@@ -142,7 +142,19 @@ export const translations = {
       imageRequirements: "图片要求",
       imageRequirement1: "图片中必须只包含一件衣物（不允许多件衣物）",
       imageRequirement2: "不允许有其他物品、人物或复杂背景",
-      imageRequirement3: "图片应该是纯衣物展示，适合用于后续的试穿图生成"
+      imageRequirement3: "图片应该是纯衣物展示，适合用于后续的试穿图生成",
+      name: "衣物名称",
+      shelfNo: "货架号",
+      price: "购买价格",
+      purchaseDate: "购买日期",
+      brand: "品牌",
+      size: "尺码",
+      status: "初始状态",
+      wearCount: "初始穿着次数",
+      statusInWardrobe: "在柜",
+      statusWashing: "洗衣",
+      statusLent: "借出",
+      statusDiscarded: "丢弃"
     }
   },
   // 英文翻译
@@ -285,7 +297,19 @@ export const translations = {
       imageRequirements: "Image Requirements",
       imageRequirement1: "The image must contain only one clothing item (multiple items not allowed)",
       imageRequirement2: "No other objects, people, or complex backgrounds allowed",
-      imageRequirement3: "The image should be a pure clothing display, suitable for try-on image generation"
+      imageRequirement3: "The image should be a pure clothing display, suitable for try-on image generation",
+      name: "Name",
+      shelfNo: "Shelf Number",
+      price: "Price",
+      purchaseDate: "Purchase Date",
+      brand: "Brand",
+      size: "Size",
+      status: "Status",
+      wearCount: "Wear Count",
+      statusInWardrobe: "In Wardrobe",
+      statusWashing: "Washing",
+      statusLent: "Lent",
+      statusDiscarded: "Discarded"
     }
   },
   // 日文翻译
@@ -428,7 +452,19 @@ export const translations = {
       imageRequirements: "画像要件",
       imageRequirement1: "画像には1つの衣類のみが含まれている必要があります（複数の衣類は不可）",
       imageRequirement2: "他のアイテム、人物、または複雑な背景は許可されません",
-      imageRequirement3: "画像は純粋な衣類の表示である必要があり、試着画像生成に適しています"
+      imageRequirement3: "画像は純粋な衣類の表示である必要があり、試着画像生成に適しています",
+      name: "衣類名称",
+      shelfNo: "棚番号",
+      price: "購入価格",
+      purchaseDate: "購入日",
+      brand: "ブランド",
+      size: "サイズ",
+      status: "初期状態",
+      wearCount: "初期着用回数",
+      statusInWardrobe: "クローゼット内",
+      statusWashing: "洗濯中",
+      statusLent: "貸出中",
+      statusDiscarded: "廃棄"
     }
   }
 };
